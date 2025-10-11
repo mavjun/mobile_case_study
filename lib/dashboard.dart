@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'request_form.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'login.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key}); // Keep const here in constructor
+  final int userId;
+  const DashboardScreen({super.key, required this.userId});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -10,15 +14,65 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
+  String userName = "";
+  bool isLoading = true;
 
-  final List<Widget> _screens = [
-    const HomeTab(),
-    const RequestsTab(),
-    const ProfileTab(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _fetchUser();
+  }
+
+  Future<void> _fetchUser() async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          "http://192.168.1.31/case_stud/auth/get_user.php?user_id=${widget.userId}",
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          setState(() {
+            userName = data['user']['name'];
+            isLoading = false;
+          });
+        } else {
+          setState(() {
+            userName = "User";
+            isLoading = false;
+          });
+        }
+      } else {
+        setState(() {
+          userName = "User";
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        userName = "User";
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> screens = [
+      HomeTab(userName: userName),
+      const RequestsTab(),
+      ProfileTab(
+        userId: widget.userId,
+        onNameChanged: (newName) {
+          setState(() {
+            userName = newName;
+          });
+        },
+      ),
+    ];
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
@@ -27,7 +81,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: _screens[_currentIndex],
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : screens[_currentIndex],
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
@@ -47,12 +103,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           });
         },
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
           BottomNavigationBarItem(
             icon: Icon(Icons.list_alt),
             label: 'Requests',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_2_outlined),
+            label: 'Profile',
+          ),
         ],
       ),
     );
@@ -60,7 +119,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 }
 
 class HomeTab extends StatelessWidget {
-  const HomeTab({super.key});
+  final String userName;
+  const HomeTab({super.key, required this.userName});
 
   @override
   Widget build(BuildContext context) {
@@ -80,9 +140,9 @@ class HomeTab extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Welcome, John Doe!',
-                  style: TextStyle(
+                Text(
+                  'Welcome, $userName!',
+                  style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -125,53 +185,25 @@ class HomeTab extends StatelessWidget {
                 'Barangay Clearance',
                 Icons.description,
                 Colors.green,
-                () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const RequestFormScreen(),
-                    ),
-                  );
-                },
+                context,
               ),
               _buildActionCard(
                 'Business Clearance',
                 Icons.business,
                 Colors.orange,
-                () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const RequestFormScreen(),
-                    ),
-                  );
-                },
+                context,
               ),
               _buildActionCard(
                 'Certificate',
                 Icons.verified,
                 Colors.purple,
-                () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const RequestFormScreen(),
-                    ),
-                  );
-                },
+                context,
               ),
               _buildActionCard(
                 'Other Request',
                 Icons.help_outline,
                 Colors.blue,
-                () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const RequestFormScreen(),
-                    ),
-                  );
-                },
+                context,
               ),
             ],
           ),
@@ -191,9 +223,7 @@ class HomeTab extends StatelessWidget {
                 ),
               ),
               TextButton(
-                onPressed: () {
-                  // Navigate to requests tab
-                },
+                onPressed: () {},
                 child: Text(
                   'View All',
                   style: TextStyle(
@@ -213,9 +243,7 @@ class HomeTab extends StatelessWidget {
             'Pending',
             Colors.orange,
           ),
-
           const SizedBox(height: 12),
-
           _buildRequestCard(
             'Business Clearance',
             'Submitted: Sep 28, 2025',
@@ -231,12 +259,17 @@ class HomeTab extends StatelessWidget {
     String title,
     IconData icon,
     Color color,
-    VoidCallback onTap,
+    BuildContext context,
   ) {
     return Card(
       elevation: 2,
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const RequestFormScreen()),
+          );
+        },
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(16),
@@ -348,26 +381,37 @@ class RequestsTab extends StatelessWidget {
 }
 
 class ProfileTab extends StatefulWidget {
-  const ProfileTab({super.key});
+  final int userId;
+  final Function(String) onNameChanged; // Add this
+
+  const ProfileTab({
+    super.key,
+    required this.userId,
+    required this.onNameChanged,
+  });
 
   @override
   State<ProfileTab> createState() => _ProfileTabState();
 }
 
 class _ProfileTabState extends State<ProfileTab> {
-  // User information
-  String _fullName = 'John Doe';
-  String _email = 'john.doe@email.com';
-  String _phoneNumber = '+63 912 345 6789';
-  String _address = '123 Main Street, Barangay 123, City';
-  String _birthDate = '1990-01-15';
+  // User information - will be loaded from API
+  String _fullName = 'Loading...';
+  String _email = 'Loading...';
+  String _phoneNumber = 'Loading...';
+  String _address = 'Loading...';
+  String _birthDate = 'Loading...';
+  bool _isLoading = true;
+  bool _isCurrentPasswordObscured = true;
+  bool _isNewPasswordObscured = true;
+  bool _isConfirmPasswordObscured = true;
 
   // Controllers for editing
-  TextEditingController _fullNameController = TextEditingController();
-  TextEditingController _emailController = TextEditingController();
-  TextEditingController _phoneController = TextEditingController();
-  TextEditingController _addressController = TextEditingController();
-  TextEditingController _birthDateController = TextEditingController();
+  late TextEditingController _fullNameController;
+  late TextEditingController _emailController;
+  late TextEditingController _phoneController;
+  late TextEditingController _addressController;
+  late TextEditingController _birthDateController;
 
   // Password change controllers
   TextEditingController _currentPasswordController = TextEditingController();
@@ -377,12 +421,180 @@ class _ProfileTabState extends State<ProfileTab> {
   @override
   void initState() {
     super.initState();
-    // Initialize controllers with current values
-    _fullNameController.text = _fullName;
-    _emailController.text = _email;
-    _phoneController.text = _phoneNumber;
-    _addressController.text = _address;
-    _birthDateController.text = _birthDate;
+    // Initialize controllers
+    _fullNameController = TextEditingController();
+    _emailController = TextEditingController();
+    _phoneController = TextEditingController();
+    _addressController = TextEditingController();
+    _birthDateController = TextEditingController();
+
+    // Load user data
+    _loadUserData();
+  }
+
+  // Function to load user data from API
+  Future<void> _loadUserData() async {
+    try {
+      // Replace with your actual API endpoint
+      final response = await http.get(
+        Uri.parse(
+          'http://192.168.1.31/case_stud/auth/get_user.php?user_id=${widget.userId}',
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success']) {
+          setState(() {
+            _fullName = data['user']['name'] ?? 'No Name';
+            _email = data['user']['email'] ?? 'No Email';
+            _phoneNumber = data['user']['phone_number'] ?? 'No Phone';
+            _address = data['user']['address'] ?? 'No Address';
+            _birthDate = data['user']['birth_date'] ?? 'No Birth Date';
+            _isLoading = false;
+          });
+
+          // Update controllers with loaded data
+          _fullNameController.text = _fullName;
+          _emailController.text = _email;
+          _phoneController.text = _phoneNumber;
+          _addressController.text = _address;
+          _birthDateController.text = _birthDate;
+        } else {
+          _showError('Failed to load user data');
+        }
+      } else {
+        _showError('Server error: ${response.statusCode}');
+      }
+    } catch (e) {
+      _showError('Network error: $e');
+      // Fallback to demo data
+      setState(() {
+        _fullName = 'John Doe';
+        _email = 'john.doe@email.com';
+        _phoneNumber = '+63 912 345 6789';
+        _address = '123 Main Street, Barangay 123, City';
+        _birthDate = '1990-01-15';
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Function to update user profile
+  Future<void> _updateProfile() async {
+    try {
+      final response = await http.post(
+        Uri.parse('http://192.168.1.31/case_stud/auth/update_profile.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'user_id': widget.userId, // pass the current userId
+          'name': _fullNameController.text,
+          'email': _emailController.text,
+          'phone_number': _phoneController.text,
+          'address': _addressController.text,
+          'birth_date': _birthDateController.text,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success']) {
+          setState(() {
+            _fullName = _fullNameController.text;
+            _email = _emailController.text;
+            _phoneNumber = _phoneController.text;
+            _address = _addressController.text;
+            _birthDate = _birthDateController.text;
+          });
+
+          // Update Dashboard
+          widget.onNameChanged(_fullNameController.text);
+
+          Navigator.pop(context); // close edit modal
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile updated successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          _showError(data['error'] ?? 'Failed to update profile');
+        }
+      } else {
+        _showError('Server error: ${response.statusCode}');
+      }
+    } catch (e) {
+      _showError('Network error: $e');
+    }
+  }
+
+  // Function to change password
+  Future<void> _updatePassword() async {
+    if (_newPasswordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('New passwords do not match'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_newPasswordController.text.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Password must be at least 6 characters'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://192.168.1.31/case_stud/auth/change_password.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'user_id': widget.userId,
+          'current_password': _currentPasswordController.text,
+          'new_password': _newPasswordController.text,
+        }),
+      );
+
+      final data = json.decode(response.body);
+      if (data['success']) {
+        _currentPasswordController.clear();
+        _newPasswordController.clear();
+        _confirmPasswordController.clear();
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Password updated successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(data['error'] ?? 'Failed to update password'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Network error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
   }
 
   @override
@@ -407,14 +619,16 @@ class _ProfileTabState extends State<ProfileTab> {
                   child: Icon(Icons.person, size: 50, color: Colors.blue[700]),
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  _fullName,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
+                _isLoading
+                    ? const CircularProgressIndicator()
+                    : Text(
+                        _fullName,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
                 Text(
                   _email,
                   style: TextStyle(fontSize: 16, color: Colors.grey[600]),
@@ -431,19 +645,21 @@ class _ProfileTabState extends State<ProfileTab> {
             elevation: 2,
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  _buildInfoRow('Full Name', _fullName),
-                  const Divider(),
-                  _buildInfoRow('Email', _email),
-                  const Divider(),
-                  _buildInfoRow('Phone Number', _phoneNumber),
-                  const Divider(),
-                  _buildInfoRow('Address', _address),
-                  const Divider(),
-                  _buildInfoRow('Birth Date', _birthDate),
-                ],
-              ),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : Column(
+                      children: [
+                        _buildInfoRow('Full Name', _fullName),
+                        const Divider(),
+                        _buildInfoRow('Email', _email),
+                        const Divider(),
+                        _buildInfoRow('Phone Number', _phoneNumber),
+                        const Divider(),
+                        _buildInfoRow('Address', _address),
+                        const Divider(),
+                        _buildInfoRow('Birth Date', _birthDate),
+                      ],
+                    ),
             ),
           ),
 
@@ -454,7 +670,7 @@ class _ProfileTabState extends State<ProfileTab> {
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: _editProfile,
+                  onPressed: _isLoading ? null : _editProfile,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[700],
                     foregroundColor: Colors.white,
@@ -467,7 +683,7 @@ class _ProfileTabState extends State<ProfileTab> {
               const SizedBox(width: 12),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: _changePassword,
+                  onPressed: _isLoading ? null : _changePassword,
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     side: BorderSide(color: Colors.blue[700]!),
@@ -530,7 +746,7 @@ class _ProfileTabState extends State<ProfileTab> {
             child: SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: _showLogoutConfirmation,
+                onPressed: _isLoading ? null : _showLogoutConfirmation,
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   side: BorderSide(color: Colors.red[300]!),
@@ -646,7 +862,6 @@ class _ProfileTabState extends State<ProfileTab> {
                 const SizedBox(height: 16),
                 _buildEditField('Birth Date', _birthDateController),
                 const SizedBox(height: 24),
-                // Add safe area at the bottom
                 SafeArea(
                   top: false,
                   child: Row(
@@ -660,7 +875,7 @@ class _ProfileTabState extends State<ProfileTab> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: _saveProfile,
+                          onPressed: _updateProfile,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue[700],
                             foregroundColor: Colors.white,
@@ -704,92 +919,95 @@ class _ProfileTabState extends State<ProfileTab> {
     );
   }
 
-  void _saveProfile() {
-    setState(() {
-      _fullName = _fullNameController.text;
-      _email = _emailController.text;
-      _phoneNumber = _phoneController.text;
-      _address = _addressController.text;
-      _birthDate = _birthDateController.text;
-    });
-
-    Navigator.pop(context);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Profile updated successfully'),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
-
   void _changePassword() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => Container(
-        padding: EdgeInsets.only(
-          bottom:
-              MediaQuery.of(context).viewInsets.bottom +
-              MediaQuery.of(context).padding.bottom +
-              20,
-          left: 24,
-          right: 24,
-          top: 24,
-        ),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          padding: EdgeInsets.only(
+            bottom:
+                MediaQuery.of(context).viewInsets.bottom +
+                MediaQuery.of(context).padding.bottom +
+                20,
+            left: 24,
+            right: 24,
+            top: 24,
           ),
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Change Password',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 20),
-              _buildPasswordField(
-                'Current Password',
-                _currentPasswordController,
-                true,
-              ),
-              const SizedBox(height: 16),
-              _buildPasswordField('New Password', _newPasswordController, true),
-              const SizedBox(height: 16),
-              _buildPasswordField(
-                'Confirm New Password',
-                _confirmPasswordController,
-                true,
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _updatePassword,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue[700],
-                        foregroundColor: Colors.white,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Change Password',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 20),
+
+                // Current Password
+                _buildPasswordField(
+                  'Current Password',
+                  _currentPasswordController,
+                  _isCurrentPasswordObscured,
+                  () => setModalState(() {
+                    _isCurrentPasswordObscured = !_isCurrentPasswordObscured;
+                  }),
+                ),
+                const SizedBox(height: 16),
+
+                // New Password
+                _buildPasswordField(
+                  'New Password',
+                  _newPasswordController,
+                  _isNewPasswordObscured,
+                  () => setModalState(() {
+                    _isNewPasswordObscured = !_isNewPasswordObscured;
+                  }),
+                ),
+                const SizedBox(height: 16),
+
+                // Confirm Password
+                _buildPasswordField(
+                  'Confirm New Password',
+                  _confirmPasswordController,
+                  _isConfirmPasswordObscured,
+                  () => setModalState(() {
+                    _isConfirmPasswordObscured = !_isConfirmPasswordObscured;
+                  }),
+                ),
+                const SizedBox(height: 24),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
                       ),
-                      child: const Text('Update Password'),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _updatePassword,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue[700],
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Update Password'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -800,6 +1018,7 @@ class _ProfileTabState extends State<ProfileTab> {
     String label,
     TextEditingController controller,
     bool obscureText,
+    VoidCallback toggleVisibility,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -815,45 +1034,13 @@ class _ProfileTabState extends State<ProfileTab> {
           decoration: InputDecoration(
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             contentPadding: const EdgeInsets.all(12),
+            suffixIcon: IconButton(
+              icon: Icon(obscureText ? Icons.visibility_off : Icons.visibility),
+              onPressed: toggleVisibility,
+            ),
           ),
         ),
       ],
-    );
-  }
-
-  void _updatePassword() {
-    if (_newPasswordController.text != _confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('New passwords do not match'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    if (_newPasswordController.text.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Password must be at least 6 characters'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    // Clear password fields
-    _currentPasswordController.clear();
-    _newPasswordController.clear();
-    _confirmPasswordController.clear();
-
-    Navigator.pop(context);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Password updated successfully'),
-        backgroundColor: Colors.green,
-      ),
     );
   }
 
@@ -870,8 +1057,18 @@ class _ProfileTabState extends State<ProfileTab> {
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
-              // Add logout logic here
+              Navigator.pop(context); // Close dialog
+
+              // Clear user session info (if using variables)
+              // You can also clear SharedPreferences here if implemented
+
+              // Navigate back to Login Screen
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => LoginPage()),
+                (route) => false, // Remove all previous routes
+              );
+
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Logged out successfully'),
