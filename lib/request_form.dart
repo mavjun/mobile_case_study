@@ -12,7 +12,8 @@ class RequestFormScreen extends StatefulWidget {
 class _RequestFormScreenState extends State<RequestFormScreen> {
   int _currentStep = 0;
   String? _selectedService;
-  List<AttachedFile> _attachedFiles = [];
+  List<AttachedFile> _validIdFiles = [];
+  List<AttachedFile> _residencyFiles = [];
   TextEditingController _additionalInfoController = TextEditingController();
   TextEditingController _purposeController = TextEditingController();
   TextEditingController _neededByController = TextEditingController();
@@ -96,7 +97,21 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: details.onStepCancel,
-                      child: const Text('Back'),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: Colors.grey[200],
+                        foregroundColor: Colors.black87,
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                        child: Text(
+                          'Back',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
                     ),
                   ),
                 if (_currentStep > 0) const SizedBox(width: 12),
@@ -104,11 +119,23 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                   child: ElevatedButton(
                     onPressed: details.onStepContinue,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue[700],
+                      backgroundColor: Colors.blue[400],
+                      shadowColor: Colors.blueAccent,
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    child: Text(
-                      _currentStep == 2 ? 'Submit Request' : 'Next →',
-                      style: const TextStyle(color: Colors.white),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      child: Text(
+                        _currentStep == 2 ? 'Submit Request' : 'Next →',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -116,6 +143,7 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
             ),
           );
         },
+
         steps: [
           Step(
             title: const Text('Select Service'),
@@ -230,7 +258,6 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Purpose Field
         const Text(
           'Purpose',
           style: TextStyle(
@@ -249,17 +276,8 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
             filled: true,
             fillColor: Colors.grey[50],
           ),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please enter the purpose';
-            }
-            return null;
-          },
         ),
-
         const SizedBox(height: 20),
-
-        // Business Details Section (only for Business Permit)
         if (_selectedService == 'Business Permit') ...[
           const Text(
             'Business Details',
@@ -270,8 +288,6 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
             ),
           ),
           const SizedBox(height: 16),
-
-          // Business Name
           const Text(
             'Business Name *',
             style: TextStyle(
@@ -291,18 +307,8 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
               filled: true,
               fillColor: Colors.grey[50],
             ),
-            validator: (value) {
-              if (_selectedService == 'Business Permit' &&
-                  (value == null || value.isEmpty)) {
-                return 'Please enter business name';
-              }
-              return null;
-            },
           ),
-
           const SizedBox(height: 16),
-
-          // Business Address
           const Text(
             'Business Address *',
             style: TextStyle(
@@ -323,18 +329,8 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
               filled: true,
               fillColor: Colors.grey[50],
             ),
-            validator: (value) {
-              if (_selectedService == 'Business Permit' &&
-                  (value == null || value.isEmpty)) {
-                return 'Please enter business address';
-              }
-              return null;
-            },
           ),
-
           const SizedBox(height: 16),
-
-          // Business Type
           const Text(
             'Business Type *',
             style: TextStyle(
@@ -362,26 +358,12 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                 _selectedBusinessType = newValue;
               });
             },
-            validator: (value) {
-              if (_selectedService == 'Business Permit' &&
-                  (value == null || value.isEmpty)) {
-                return 'Please select business type';
-              }
-              return null;
-            },
           ),
-
           const SizedBox(height: 20),
         ],
-
-        // Needed By Field with Date Picker
         const Text(
           'Needed By (Optional)',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Row(
@@ -389,7 +371,7 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
             Expanded(
               child: TextFormField(
                 controller: _neededByController,
-                readOnly: true, // Make the field read-only
+                readOnly: true,
                 decoration: InputDecoration(
                   hintText: 'Select date',
                   border: OutlineInputBorder(
@@ -402,32 +384,30 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                     onPressed: _selectDate,
                   ),
                 ),
-                onTap: _selectDate, // Open date picker when field is tapped
+                onTap: _selectDate,
               ),
             ),
           ],
         ),
-
         const SizedBox(height: 20),
-        const Text(
-          'Upload required photos for your request',
-          style: TextStyle(fontSize: 14, color: Colors.grey),
+        // Image pickers
+        _buildSinglePhotoSection(
+          'Valid ID',
+          _validIdFiles,
+          _pickValidIDImageFromGallery,
+          _takeValidIDPhoto,
         ),
         const SizedBox(height: 20),
-
-        // Photo upload section
-        _buildPhotoUploadSection(),
-
+        _buildSinglePhotoSection(
+          'Proof of Residence',
+          _residencyFiles,
+          _pickResidencyImageFromGallery,
+          _takeResidencyPhoto,
+        ),
         const SizedBox(height: 20),
-
-        // Additional information field
         const Text(
           'Additional Information (Optional)',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         TextFormField(
@@ -444,253 +424,165 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
     );
   }
 
-  Future<void> _selectDate() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2100),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Colors.blue[700]!, // header background color
-              onPrimary: Colors.white, // header text color
-              onSurface: Colors.black87, // body text color
-            ),
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.blue[700], // button text color
-              ),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) {
-      setState(() {
-        _neededByController.text =
-            "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
-      });
-    }
-  }
-
-  Widget _buildPhotoUploadSection() {
+  Widget _buildSinglePhotoSection(
+    String title,
+    List<AttachedFile> files,
+    VoidCallback pickGallery,
+    VoidCallback takePhoto,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Required Photos',
-          style: TextStyle(
+        Text(
+          title,
+          style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: Colors.black87,
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          _selectedService == 'Business Permit'
-              ? 'Please upload clear photos of your business documents and valid ID'
-              : 'Please upload clear photos of your documents',
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
-        ),
-        const SizedBox(height: 16),
-
-        // Photo attachment area
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[300]!, width: 2),
-            borderRadius: BorderRadius.circular(12),
-            color: Colors.grey[50],
-          ),
-          child: Column(
-            children: [
-              Icon(Icons.camera_alt, size: 48, color: Colors.grey[400]),
-              const SizedBox(height: 12),
-              const Text(
-                'Tap to attach photos',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey,
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: pickGallery,
+                icon: const Icon(Icons.photo_library),
+                label: const Text('Gallery'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal[400],
+                  elevation: 3,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Supports: JPG, PNG (Max: 10MB)',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: _pickImageFromGallery,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue[700],
-                      foregroundColor: Colors.white,
-                    ),
-                    icon: const Icon(Icons.photo_library, size: 18),
-                    label: const Text('Gallery'),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: takePhoto,
+                icon: const Icon(Icons.camera_alt),
+                label: const Text('Camera'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange[400],
+                  elevation: 3,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  ElevatedButton.icon(
-                    onPressed: _takePhoto,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green[700],
-                      foregroundColor: Colors.white,
-                    ),
-                    icon: const Icon(Icons.camera_alt, size: 18),
-                    label: const Text('Camera'),
-                  ),
-                ],
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
 
-        const SizedBox(height: 16),
-
-        // Attached photos list
-        _buildAttachedPhotosList(),
+        if (files.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: files
+                  .map((file) => _buildThumbnail(file, files))
+                  .toList(),
+            ),
+          ),
       ],
     );
   }
 
-  Widget _buildAttachedPhotosList() {
-    if (_attachedFiles.isEmpty) {
-      return Container();
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildThumbnail(AttachedFile file, List<AttachedFile> files) {
+    return Stack(
       children: [
-        const Text(
-          'Attached Photos:',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: Colors.black87,
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.file(
+            File(file.path),
+            width: 100,
+            height: 100,
+            fit: BoxFit.cover,
           ),
         ),
-        const SizedBox(height: 8),
-        ..._attachedFiles.map((file) => _buildPhotoItem(file)).toList(),
+        Positioned(
+          top: 2,
+          right: 2,
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                files.remove(file);
+              });
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.close, size: 18, color: Colors.white),
+            ),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildPhotoItem(AttachedFile file) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      elevation: 1,
-      child: ListTile(
-        leading: const Icon(Icons.image, color: Colors.green),
-        title: Text(
-          file.name,
-          style: const TextStyle(fontSize: 14),
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Text(
-          '${(file.size / 1024 / 1024).toStringAsFixed(2)} MB',
-          style: const TextStyle(fontSize: 12),
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-          onPressed: () {
-            setState(() {
-              _attachedFiles.remove(file);
-            });
-          },
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        visualDensity: const VisualDensity(horizontal: 0, vertical: -4),
-      ),
-    );
+  Future<void> _pickValidIDImageFromGallery() async {
+    await _pickImage(_validIdFiles, ImageSource.gallery);
   }
 
-  Future<void> _pickImageFromGallery() async {
+  Future<void> _takeValidIDPhoto() async {
+    await _pickImage(_validIdFiles, ImageSource.camera);
+  }
+
+  Future<void> _pickResidencyImageFromGallery() async {
+    await _pickImage(_residencyFiles, ImageSource.gallery);
+  }
+
+  Future<void> _takeResidencyPhoto() async {
+    await _pickImage(_residencyFiles, ImageSource.camera);
+  }
+
+  Future<void> _pickImage(List<AttachedFile> files, ImageSource source) async {
     try {
       final XFile? image = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
+        source: source,
         maxWidth: 1920,
         maxHeight: 1080,
         imageQuality: 85,
       );
-
       if (image != null) {
-        final file = File(image.path);
-        final stat = await file.stat();
-
+        final fileStat = await File(image.path).stat();
         setState(() {
-          _attachedFiles.add(
+          files.add(
             AttachedFile(
-              name: 'photo_${_attachedFiles.length + 1}.jpg',
+              name: 'photo_${files.length + 1}.jpg',
               type: 'jpg',
-              size: stat.size,
+              size: fileStat.size,
               path: image.path,
             ),
           );
         });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Photo added from gallery'),
-            backgroundColor: Colors.green,
-          ),
-        );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error picking photo: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
     }
   }
 
-  Future<void> _takePhoto() async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1920,
-        maxHeight: 1080,
-        imageQuality: 85,
-      );
-
-      if (image != null) {
-        final file = File(image.path);
-        final stat = await file.stat();
-
-        setState(() {
-          _attachedFiles.add(
-            AttachedFile(
-              name: 'photo_${_attachedFiles.length + 1}.jpg',
-              type: 'jpg',
-              size: stat.size,
-              path: image.path,
-            ),
-          );
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Photo taken and added'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error taking photo: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+  Future<void> _selectDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      setState(() {
+        _neededByController.text =
+            "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+      });
     }
   }
 
@@ -701,7 +593,6 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
           Service(name: 'None', description: '', fee: '', processingTime: ''),
     );
 
-    // Real data from form fields
     final String purpose = _purposeController.text.isNotEmpty
         ? _purposeController.text
         : 'Not specified';
@@ -724,383 +615,129 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
     final String submittedOn =
         '${DateTime.now().month}/${DateTime.now().day}/${DateTime.now().year}';
 
-    // Real document status based on actual uploaded files
-    final bool hasValidID = _attachedFiles.isNotEmpty;
-    final bool hasProofOfResidence = _attachedFiles.length >= 2;
-    final bool hasBusinessPermit = _selectedService == 'Business Permit'
-        ? _attachedFiles.length >= 3
-        : false;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Please review your request before submitting',
-          style: TextStyle(fontSize: 14, color: Colors.grey),
-        ),
-        const SizedBox(height: 20),
-
-        // Request Summary Card
-        Card(
-          elevation: 2,
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Title
-                const Center(
-                  child: Text(
-                    'Request Summary',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Service Details
-                _buildSummaryItem('Service Type', selectedService.name),
-                _buildSummaryItem('Purpose', purpose),
-
-                // Business Details (only for Business Permit)
-                if (_selectedService == 'Business Permit') ...[
-                  _buildSummaryItem('Business Name', businessName),
-                  _buildSummaryItem('Business Address', businessAddress),
-                  _buildSummaryItem('Business Type', businessType),
-                ] else ...[
-                  _buildSummaryItem('Business Type', 'N/A'),
-                ],
-
-                _buildSummaryItem('Needed By', neededBy),
-                _buildSummaryItem('Submitted On', submittedOn),
-
-                // Status
-                const SizedBox(height: 16),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: 100,
-                      child: Text(
-                        'Status:',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w500,
-                          color: Colors.grey[700],
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.orange[50],
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: Colors.orange[300]!),
-                      ),
-                      child: Text(
-                        'Pending',
-                        style: TextStyle(
-                          color: Colors.orange[800],
-                          fontWeight: FontWeight.w500,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                // Required Documents Section
-                const SizedBox(height: 20),
-                const Text(
-                  'Required Documents:',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                _buildDocumentStatus('Valid ID', hasValidID),
-                _buildDocumentStatus('Proof of Residence', hasProofOfResidence),
-                if (_selectedService == 'Business Permit')
-                  _buildDocumentStatus('Business Documents', hasBusinessPermit),
-
-                // Attached Photos
-                if (_attachedFiles.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Attached Photos:',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ..._attachedFiles
-                      .map(
-                        (file) => Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.image,
-                                color: Colors.green,
-                                size: 16,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  '${file.name} (${(file.size / 1024 / 1024).toStringAsFixed(2)} MB)',
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ],
-
-                // Certification Text with Checkbox
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: _isCertified ? Colors.green[50] : Colors.grey[50],
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: _isCertified
-                          ? Colors.green[300]!
-                          : Colors.grey[300]!,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 24,
-                        height: 24,
-                        margin: const EdgeInsets.only(top: 2),
-                        child: Checkbox(
-                          value: _isCertified,
-                          onChanged: (bool? value) {
-                            setState(() {
-                              _isCertified = value ?? false;
-                            });
-                          },
-                          activeColor: Colors.green[700],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Certification Agreement',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey[800],
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'I certify that the information provided is true and correct. I understand that providing false information may result in penalties.',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[600],
-                                height: 1.4,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSummaryItem(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
+    return SingleChildScrollView(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              '$label:',
-              style: TextStyle(
-                fontWeight: FontWeight.w500,
-                color: Colors.grey[700],
-                fontSize: 14,
-              ),
-            ),
+          const SizedBox(height: 8),
+          _buildSummaryItem('Service Type', selectedService.name),
+          _buildSummaryItem('Purpose', purpose),
+          if (_selectedService == 'Business Permit') ...[
+            _buildSummaryItem('Business Name', businessName),
+            _buildSummaryItem('Business Address', businessAddress),
+            _buildSummaryItem('Business Type', businessType),
+          ],
+          _buildSummaryItem('Needed By', neededBy),
+          _buildSummaryItem('Submitted On', submittedOn),
+          const SizedBox(height: 16),
+          const Text(
+            'Attached Photos:',
+            style: TextStyle(fontWeight: FontWeight.bold),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 14),
-            ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ..._validIdFiles
+                  .map(
+                    (f) => Image.file(
+                      File(f.path),
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                  .toList(),
+              ..._residencyFiles
+                  .map(
+                    (f) => Image.file(
+                      File(f.path),
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                  .toList(),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Checkbox(
+                value: _isCertified,
+                onChanged: (value) {
+                  setState(() {
+                    _isCertified = value!;
+                  });
+                },
+              ),
+              const Expanded(
+                child: Text(
+                  'I certify that the information provided is true and correct.',
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDocumentStatus(String documentName, bool isUploaded) {
+  Widget _buildSummaryItem(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Text(
-            '• $documentName:',
-            style: const TextStyle(fontSize: 14, color: Colors.black87),
-          ),
-          const SizedBox(width: 8),
-          Icon(
-            isUploaded ? Icons.check_circle : Icons.cancel,
-            color: isUploaded ? Colors.green : Colors.red,
-            size: 18,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            isUploaded ? 'Uploaded' : 'Missing',
-            style: TextStyle(
-              fontSize: 14,
-              color: isUploaded ? Colors.green : Colors.red,
-              fontWeight: FontWeight.w500,
+          SizedBox(
+            width: 120,
+            child: Text(
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
+          Expanded(child: Text(value)),
         ],
       ),
     );
   }
 
   void _continue() {
-    if (_currentStep == 0 && _selectedService == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a service to continue'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    if (_currentStep == 1) {
-      // Validate purpose field
-      if (_purposeController.text.isEmpty) {
+    if (_currentStep < 2) {
+      setState(() => _currentStep += 1);
+    } else {
+      if (!_isCertified) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Please enter the purpose of your request'),
-            backgroundColor: Colors.red,
+            content: Text('Please certify your request before submitting.'),
           ),
         );
         return;
       }
-
-      // Validate business permit fields
-      if (_selectedService == 'Business Permit') {
-        if (_businessNameController.text.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Please enter business name'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          return;
-        }
-        if (_businessAddressController.text.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Please enter business address'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          return;
-        }
-        if (_selectedBusinessType == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Please select business type'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          return;
-        }
-      }
-    }
-
-    if (_currentStep < 2) {
-      setState(() => _currentStep += 1);
-    } else {
-      _submitRequest();
+      // Handle submission here
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Request submitted successfully!')),
+      );
     }
   }
 
   void _cancel() {
-    if (_currentStep > 0) {
-      setState(() => _currentStep -= 1);
-    }
+    if (_currentStep > 0) setState(() => _currentStep -= 1);
   }
+}
 
-  void _submitRequest() {
-    if (!_isCertified) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Please certify that the information provided is true and correct',
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
+class AttachedFile {
+  final String name;
+  final String type;
+  final int size;
+  final String path;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$_selectedService request submitted successfully!'),
-        backgroundColor: Colors.green,
-      ),
-    );
-
-    // Navigate back to dashboard after submission
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pop(context);
-    });
-  }
-
-  @override
-  void dispose() {
-    _additionalInfoController.dispose();
-    _purposeController.dispose();
-    _neededByController.dispose();
-    _businessNameController.dispose();
-    _businessAddressController.dispose();
-    super.dispose();
-  }
+  AttachedFile({
+    required this.name,
+    required this.type,
+    required this.size,
+    required this.path,
+  });
 }
 
 class Service {
@@ -1114,19 +751,5 @@ class Service {
     required this.description,
     required this.fee,
     required this.processingTime,
-  });
-}
-
-class AttachedFile {
-  final String name;
-  final String type;
-  final int size; // in bytes
-  final String path;
-
-  AttachedFile({
-    required this.name,
-    required this.type,
-    required this.size,
-    required this.path,
   });
 }

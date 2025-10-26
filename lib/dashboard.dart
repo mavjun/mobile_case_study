@@ -3,6 +3,8 @@ import 'request_form.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'login.dart';
+import 'config.dart';
+import 'all_requests.dart';
 
 class DashboardScreen extends StatefulWidget {
   final int userId;
@@ -25,10 +27,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _fetchUser() async {
     try {
+      final baseUrl = await Config.baseUrl;
       final response = await http.get(
-        Uri.parse(
-          "http://192.168.1.31/case_stud/auth/get_user.php?user_id=${widget.userId}",
-        ),
+        Uri.parse("$baseUrl/auth/get_user.php?user_id=${widget.userId}"),
       );
 
       if (response.statusCode == 200) {
@@ -223,11 +224,18 @@ class HomeTab extends StatelessWidget {
                 ),
               ),
               TextButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AllRequestsScreen(),
+                    ),
+                  );
+                },
                 child: Text(
                   'View All',
                   style: TextStyle(
-                    color: Colors.blue[700],
+                    color: const Color.fromARGB(255, 67, 61, 227),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -436,10 +444,9 @@ class _ProfileTabState extends State<ProfileTab> {
   Future<void> _loadUserData() async {
     try {
       // Replace with your actual API endpoint
+      final baseUrl = await Config.baseUrl;
       final response = await http.get(
-        Uri.parse(
-          'http://192.168.1.31/case_stud/auth/get_user.php?user_id=${widget.userId}',
-        ),
+        Uri.parse("$baseUrl/auth/get_user.php?user_id=${widget.userId}"),
       );
 
       if (response.statusCode == 200) {
@@ -483,8 +490,10 @@ class _ProfileTabState extends State<ProfileTab> {
   // Function to update user profile
   Future<void> _updateProfile() async {
     try {
+      final baseUrl = await Config.baseUrl;
       final response = await http.post(
-        Uri.parse('http://192.168.1.31/case_stud/auth/update_profile.php'),
+        Uri.parse("$baseUrl/auth/update_profile.php"),
+
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'user_id': widget.userId, // pass the current userId
@@ -515,6 +524,8 @@ class _ProfileTabState extends State<ProfileTab> {
             const SnackBar(
               content: Text('Profile updated successfully'),
               backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              margin: EdgeInsets.all(16),
             ),
           );
         } else {
@@ -533,10 +544,13 @@ class _ProfileTabState extends State<ProfileTab> {
     if (_newPasswordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('New passwords do not match'),
-          backgroundColor: Colors.red,
+          content: Text('Password updated successfully'),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(16),
         ),
       );
+
       return;
     }
 
@@ -545,14 +559,18 @@ class _ProfileTabState extends State<ProfileTab> {
         const SnackBar(
           content: Text('Password must be at least 6 characters'),
           backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(16),
         ),
       );
       return;
     }
 
     try {
+      final baseUrl = await Config.baseUrl;
       final response = await http.post(
-        Uri.parse('http://192.168.1.31/case_stud/auth/change_password.php'),
+        Uri.parse("$baseUrl/auth/change_password.php"),
+
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'user_id': widget.userId,
@@ -571,6 +589,8 @@ class _ProfileTabState extends State<ProfileTab> {
           const SnackBar(
             content: Text('Password updated successfully'),
             backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(16),
           ),
         );
       } else {
@@ -578,6 +598,8 @@ class _ProfileTabState extends State<ProfileTab> {
           SnackBar(
             content: Text(data['error'] ?? 'Failed to update password'),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(16),
           ),
         );
       }
@@ -586,6 +608,8 @@ class _ProfileTabState extends State<ProfileTab> {
         SnackBar(
           content: Text('Network error: $e'),
           backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(16),
         ),
       );
     }
@@ -593,7 +617,12 @@ class _ProfileTabState extends State<ProfileTab> {
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(16),
+      ),
     );
   }
 

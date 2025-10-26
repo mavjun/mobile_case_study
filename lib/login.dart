@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dashboard.dart'; // Import your dashboard file
 import 'register.dart';
+import 'config.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -22,8 +23,10 @@ class _LoginPageState extends State<LoginPage> {
       setState(() => _isLoading = true);
 
       try {
+        final baseUrlString = await Config.baseUrl; // Await the baseUrl
+
         final response = await http.post(
-          Uri.parse("http://192.168.1.31/case_stud/auth/login.php"),
+          Uri.parse("$baseUrlString/auth/login.php"),
           headers: {"Content-Type": "application/json"},
           body: jsonEncode({
             "email": _emailController.text.trim(),
@@ -41,6 +44,8 @@ class _LoginPageState extends State<LoginPage> {
                   'Login successful! Welcome ${data['user']['name']}',
                 ),
                 backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+                margin: EdgeInsets.all(16),
               ),
             );
 
@@ -67,7 +72,12 @@ class _LoginPageState extends State<LoginPage> {
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(16),
+      ),
     );
   }
 
