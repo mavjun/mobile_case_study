@@ -12,14 +12,22 @@ include '../config/db_connect.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    // ✅ Use $_POST for text fields (since we’ll use multipart/form-data)
+    // ✅ Use $_POST for text fields (since we're using multipart/form-data)
     $name = $_POST['name'] ?? '';
     $email = $_POST['email'] ?? '';
-    $password = password_hash($_POST['password'] ?? '', PASSWORD_DEFAULT);
+    $password = $_POST['password'] ?? '';
     $phone_number = $_POST['phone_number'] ?? '';
     $address = $_POST['address'] ?? '';
-    $barangay_residency_year = $_POST['barangay_residency_year'] ?? '';
-    $birth_date = $_POST['birth_date'] ?? ''; // Optional, if still included
+    $years_of_residency = $_POST['barangay_years'] ?? ''; // Fixed: matches Flutter field name
+
+    // Validate required fields
+    if (empty($name) || empty($email) || empty($password) || empty($phone_number) || empty($address) || empty($years_of_residency)) {
+        echo json_encode(["success" => false, "error" => "All fields are required"]);
+        exit();
+    }
+
+    // Hash password
+    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
     // ✅ Handle file upload (Valid ID)
     $upload_dir = "../uploads/valid_ids/";
@@ -40,6 +48,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(["success" => false, "error" => "Failed to upload Valid ID."]);
             exit();
         }
+    } else {
+        echo json_encode(["success" => false, "error" => "Valid ID is required"]);
+        exit();
     }
 
     try {
@@ -54,26 +65,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit();
         }
 
-        // ✅ Insert user with valid_id and residency year
+        // ✅ Insert user with correct database column names
         $stmt = $conn->prepare("
-            INSERT INTO users (name, email, password, phone_number, address, valid_id, barangay_residency_year, birth_date)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO users 
+            (name, email, password, address, years_of_residency, valid_id_path, role, approval_status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, 'resident', 'pending', NOW(), NOW())
         ");
-        $stmt->bind_param("ssssssss", $name, $email, $password, $phone_number, $address, $valid_id_path, $barangay_residency_year, $birth_date);
+        
+        // Fixed: using correct column names that match your database
+        $stmt->bind_param("ssssis", $name, $email, $hashed_password, $address, $years_of_residency, $valid_id_path);
 
         if ($stmt->execute()) {
-            session_start();
-            $_SESSION['user_id'] = $stmt->insert_id;
-            $_SESSION['user_email'] = $email;
-            $_SESSION['user_name'] = $name;
-
-            echo json_encode(["success" => true, "message" => "User registered successfully"]);
+            echo json_encode([
+                "success" => true, 
+                "message" => "Registration successful! Your account is pending approval."
+            ]);
         } else {
-            echo json_encode(["success" => false, "error" => "Registration failed"]);
+            echo json_encode(["success" => false, "error" => "Registration failed: " . $stmt->error]);
         }
+        
+        $stmt->close();
+        $check_stmt->close();
+        
     } catch (Exception $e) {
-        echo json_encode(["success" => false, "error" => $e->getMessage()]);
+        echo json_encode(["success" => false, "error" => "Database error: " . $e->getMessage()]);
     }
+    
+    $conn->close();
 } else {
     echo json_encode(["success" => false, "error" => "Invalid request method"]);
 }

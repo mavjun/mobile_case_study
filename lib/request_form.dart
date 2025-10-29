@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'dart:convert';
+import 'dart:async'; // <-- ADDED for TimeoutException
+import 'package:http/http.dart' as http;
+import 'config.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class RequestFormScreen extends StatefulWidget {
-  const RequestFormScreen({super.key});
+  final VoidCallback? onRequestSubmitted; // ADD THIS LINE
+
+  const RequestFormScreen({
+    super.key,
+    this.onRequestSubmitted,
+  }); // UPDATE THIS LINE
 
   @override
   State<RequestFormScreen> createState() => _RequestFormScreenState();
@@ -14,13 +24,13 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
   String? _selectedService;
   List<AttachedFile> _validIdFiles = [];
   List<AttachedFile> _residencyFiles = [];
-  TextEditingController _additionalInfoController = TextEditingController();
   TextEditingController _purposeController = TextEditingController();
   TextEditingController _neededByController = TextEditingController();
   TextEditingController _businessNameController = TextEditingController();
   TextEditingController _businessAddressController = TextEditingController();
-  String? _selectedBusinessType;
+  String? _selectedBusinessType; // nullable OK
   bool _isCertified = false;
+  bool _isSubmitting = false;
   final ImagePicker _imagePicker = ImagePicker();
 
   final List<Service> _services = [
@@ -29,36 +39,42 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
       description: 'For employment, business permits, and other requirements',
       fee: 'Free',
       processingTime: '15 days',
+      code: 'clearance',
     ),
     Service(
       name: 'Business Permit',
       description: 'Application for new business or renewal',
       fee: '₱2,000',
       processingTime: '35 days',
+      code: 'business',
     ),
     Service(
       name: 'Certificate of Residency',
       description: 'Proof of residency for various applications',
       fee: '₱200',
       processingTime: '8 days',
+      code: 'residency',
     ),
     Service(
       name: 'Barangay ID',
       description: 'Identification card for barangay residents',
       fee: '₱4,350',
       processingTime: '5 days',
+      code: 'id',
     ),
     Service(
       name: 'Certificate of Indigency',
       description: 'For social welfare programs and assistance',
       fee: 'Free',
       processingTime: '25 days',
+      code: 'indigency',
     ),
     Service(
       name: 'Other Request',
       description: 'Other barangay services or documents',
       fee: 'Varies',
       processingTime: 'Varies',
+      code: 'other',
     ),
   ];
 
@@ -74,6 +90,17 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
     'Other',
   ];
 
+  // Helper method to get auth token
+  Future<String?> _getAuthToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('auth_token');
+    } catch (e) {
+      print('Error getting auth token: $e');
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -85,10 +112,12 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
       ),
       body: Stepper(
         currentStep: _currentStep,
-        onStepContinue: _currentStep < 2 ? _continue : null,
+        onStepContinue: _continue,
         onStepCancel: _cancel,
         onStepTapped: (step) => setState(() => _currentStep = step),
         controlsBuilder: (context, details) {
+          final bool canContinue = !_isSubmitting;
+
           return Padding(
             padding: const EdgeInsets.only(top: 20),
             child: Row(
@@ -96,7 +125,7 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                 if (_currentStep > 0)
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: details.onStepCancel,
+                      onPressed: canContinue ? details.onStepCancel : null,
                       style: OutlinedButton.styleFrom(
                         backgroundColor: Colors.grey[200],
                         foregroundColor: Colors.black87,
@@ -117,10 +146,11 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                 if (_currentStep > 0) const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: details.onStepContinue,
+                    onPressed: canContinue ? details.onStepContinue : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue[400],
-                      shadowColor: Colors.blueAccent,
+                      backgroundColor: canContinue
+                          ? Colors.blue[400]
+                          : Colors.grey[400],
                       elevation: 4,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -128,14 +158,27 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
                     ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      child: Text(
-                        _currentStep == 2 ? 'Submit Request' : 'Next →',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          : Text(
+                              _currentStep == 2 ? 'Submit Request' : 'Next →',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: canContinue
+                                    ? Colors.white
+                                    : Colors.grey[700],
+                              ),
+                            ),
                     ),
                   ),
                 ),
@@ -143,22 +186,24 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
             ),
           );
         },
-
         steps: [
           Step(
             title: const Text('Select Service'),
             content: _buildServiceSelection(),
             isActive: _currentStep >= 0,
+            state: _currentStep > 0 ? StepState.complete : StepState.indexed,
           ),
           Step(
             title: const Text('Provide Details'),
             content: _buildDetailsForm(),
             isActive: _currentStep >= 1,
+            state: _currentStep > 1 ? StepState.complete : StepState.indexed,
           ),
           Step(
             title: const Text('Review & Submit'),
             content: _buildReviewSection(),
             isActive: _currentStep >= 2,
+            state: StepState.indexed,
           ),
         ],
       ),
@@ -259,7 +304,7 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Purpose',
+          'Purpose *',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
@@ -340,6 +385,7 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
             ),
           ),
           const SizedBox(height: 8),
+          // NOTE: value is String? and onChanged accepts String? so no type mismatch
           DropdownButtonFormField<String>(
             value: _selectedBusinessType,
             decoration: InputDecoration(
@@ -390,41 +436,24 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
           ],
         ),
         const SizedBox(height: 20),
-        // Image pickers
-        _buildSinglePhotoSection(
-          'Valid ID',
+        _buildDocumentSection(
+          'Valid ID *',
           _validIdFiles,
           _pickValidIDImageFromGallery,
           _takeValidIDPhoto,
         ),
         const SizedBox(height: 20),
-        _buildSinglePhotoSection(
-          'Proof of Residence',
+        _buildDocumentSection(
+          'Proof of Residence *',
           _residencyFiles,
           _pickResidencyImageFromGallery,
           _takeResidencyPhoto,
-        ),
-        const SizedBox(height: 20),
-        const Text(
-          'Additional Information (Optional)',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: _additionalInfoController,
-          maxLines: 4,
-          decoration: InputDecoration(
-            hintText: 'Enter any additional details or notes...',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            filled: true,
-            fillColor: Colors.grey[50],
-          ),
         ),
       ],
     );
   }
 
-  Widget _buildSinglePhotoSection(
+  Widget _buildDocumentSection(
     String title,
     List<AttachedFile> files,
     VoidCallback pickGallery,
@@ -477,7 +506,6 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
             ),
           ],
         ),
-
         if (files.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 12),
@@ -515,7 +543,7 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
               });
             },
             child: Container(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: Colors.black54,
                 shape: BoxShape.circle,
               ),
@@ -589,8 +617,13 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
   Widget _buildReviewSection() {
     final selectedService = _services.firstWhere(
       (service) => service.name == _selectedService,
-      orElse: () =>
-          Service(name: 'None', description: '', fee: '', processingTime: ''),
+      orElse: () => Service(
+        name: 'None',
+        description: '',
+        fee: '',
+        processingTime: '',
+        code: 'Other',
+      ),
     );
 
     final String purpose = _purposeController.text.isNotEmpty
@@ -631,7 +664,7 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
           _buildSummaryItem('Submitted On', submittedOn),
           const SizedBox(height: 16),
           const Text(
-            'Attached Photos:',
+            'Attached Documents:',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
@@ -666,11 +699,13 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
             children: [
               Checkbox(
                 value: _isCertified,
-                onChanged: (value) {
-                  setState(() {
-                    _isCertified = value!;
-                  });
-                },
+                onChanged: _isSubmitting
+                    ? null
+                    : (value) {
+                        setState(() {
+                          _isCertified = value ?? false;
+                        });
+                      },
               ),
               const Expanded(
                 child: Text(
@@ -702,27 +737,207 @@ class _RequestFormScreenState extends State<RequestFormScreen> {
     );
   }
 
+  Future<void> _submitRequest() async {
+    if (!_isCertified) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please certify before submitting.')),
+      );
+      return;
+    }
+
+    if (_selectedService == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a service type.')),
+      );
+      return;
+    }
+
+    if (_purposeController.text.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Purpose is required.')));
+      return;
+    }
+
+    if (_validIdFiles.isEmpty || _residencyFiles.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please upload all required documents.')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final baseUrl = await Config.baseUrl;
+
+      // Defensive: handle null baseUrl
+      if (baseUrl == null || baseUrl.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Configuration error: base URL not set.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() => _isSubmitting = false);
+        return;
+      }
+
+      final selectedServiceObj = _services.firstWhere(
+        (service) => service.name == _selectedService,
+      );
+
+      // Prepare documents
+      List<Map<String, dynamic>> documents = [];
+
+      for (var file in _validIdFiles) {
+        final bytes = await File(file.path).readAsBytes();
+        final base64 = base64Encode(bytes);
+        documents.add({"document_type": "Valid ID", "file_base64": base64});
+      }
+
+      for (var file in _residencyFiles) {
+        final bytes = await File(file.path).readAsBytes();
+        final base64 = base64Encode(bytes);
+        documents.add({
+          "document_type": "Proof of Residence",
+          "file_base64": base64,
+        });
+      }
+
+      final requestData = {
+        "service_type": selectedServiceObj.code.toLowerCase(),
+        "purpose": _purposeController.text,
+        "documents": documents,
+      };
+
+      print('📤 Sending to: $baseUrl/api/resident/submit-request');
+      print('📦 Payload keys: ${requestData.keys}');
+      print('📦 Service Type: ${requestData["service_type"]}');
+      print('📦 Purpose: ${requestData["purpose"]}');
+      print('📦 Documents count: ${documents.length}');
+      print(
+        '📦 First document type: ${documents.isNotEmpty ? documents[0]["document_type"] : "none"}',
+      );
+
+      final token = await _getAuthToken();
+      final headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+        print('🔑 Using auth token: ${token.substring(0, 20)}...');
+      } else {
+        print('⚠️ No auth token found');
+      }
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/resident/submit-request'),
+            headers: headers,
+            body: jsonEncode(requestData),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      print('📡 Status Code: ${response.statusCode}');
+      print('🧾 Response Body: ${response.body}');
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseData['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              responseData['message'] ?? 'Request submitted successfully!',
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+
+        // ✅ ADDED: Call the refresh callback if it exists
+        if (widget.onRequestSubmitted != null) {
+          widget.onRequestSubmitted!();
+        }
+
+        // Navigate back after success
+        Future.delayed(
+          const Duration(seconds: 2),
+          () => Navigator.pop(context),
+        );
+      } else {
+        String errorMessage = 'Failed to submit request.';
+
+        if (responseData is Map && responseData.containsKey('error')) {
+          errorMessage = responseData['error'].toString();
+        } else if (responseData is Map && responseData.containsKey('message')) {
+          errorMessage = responseData['message'].toString();
+        } else if (response.statusCode == 422) {
+          errorMessage = 'Validation error. Please check your input.';
+        } else if (response.statusCode == 401) {
+          errorMessage = 'Authentication failed. Please login again.';
+        } else if (response.statusCode == 500) {
+          errorMessage = 'Server error. Please try again later.';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Error: $e');
+      String errorMessage = 'Network error: $e';
+
+      if (e is SocketException) {
+        errorMessage = 'No internet connection. Please check your network.';
+      } else if (e is TimeoutException) {
+        errorMessage = 'Request timeout. Please try again.';
+      } else if (e is FormatException) {
+        errorMessage = 'Invalid response from server.';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    } finally {
+      setState(() => _isSubmitting = false);
+    }
+  }
+
   void _continue() {
     if (_currentStep < 2) {
       setState(() => _currentStep += 1);
     } else {
       if (!_isCertified) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please certify your request before submitting.'),
-          ),
+          const SnackBar(content: Text('Please certify before submitting.')),
         );
         return;
       }
-      // Handle submission here
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Request submitted successfully!')),
-      );
+      _submitRequest();
     }
   }
 
   void _cancel() {
     if (_currentStep > 0) setState(() => _currentStep -= 1);
+  }
+
+  @override
+  void dispose() {
+    _purposeController.dispose();
+    _neededByController.dispose();
+    _businessNameController.dispose();
+    _businessAddressController.dispose();
+    super.dispose();
   }
 }
 
@@ -745,11 +960,13 @@ class Service {
   final String description;
   final String fee;
   final String processingTime;
+  final String code;
 
   Service({
     required this.name,
     required this.description,
     required this.fee,
     required this.processingTime,
+    required this.code,
   });
 }

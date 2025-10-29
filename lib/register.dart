@@ -17,7 +17,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
+  // ❌ REMOVED: _phoneController
   final _addressController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -162,7 +162,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
     );
   }
 
-  /// ✅ Updated registration function
+  /// ✅ UPDATED registration function - Phone number removed
   void _register() async {
     if (_formKey.currentState!.validate()) {
       if (_validIdImage == null) {
@@ -181,32 +181,48 @@ class _RegistrationPageState extends State<RegistrationPage> {
 
       try {
         final baseUrl = await Config.baseUrl;
-        final url = Uri.parse("$baseUrl/auth/register.php");
+        final url = Uri.parse("$baseUrl/api/register");
 
         var request = http.MultipartRequest('POST', url)
           ..fields['name'] =
               "${_firstNameController.text} ${_lastNameController.text}"
           ..fields['email'] = _emailController.text
           ..fields['password'] = _passwordController.text
-          ..fields['phone_number'] = _phoneController.text
+          ..fields['password_confirmation'] = _confirmPasswordController.text
           ..fields['address'] = _addressController.text
-          ..fields['barangay_years'] = _barangayYearsController.text;
+          ..fields['years_of_residency'] = _barangayYearsController.text
+          ..fields['birthday'] =
+              '2000-01-01' // TEMPORARY
+          ..fields['gender'] = 'Male'; // TEMPORARY
 
         request.files.add(
           await http.MultipartFile.fromPath('valid_id', _validIdImage!.path),
         );
 
         var response = await request.send();
-        var responseData = jsonDecode(await response.stream.bytesToString());
+        var responseString = await response.stream.bytesToString();
+
+        print('Response status: ${response.statusCode}');
+        print('Response body: $responseString');
+
+        // Check if response is HTML (error)
+        if (responseString.trim().startsWith('<!DOCTYPE html>') ||
+            responseString.trim().startsWith('<html>')) {
+          throw Exception(
+            'Server returned HTML error page. Check server logs.',
+          );
+        }
+
+        var responseData = jsonDecode(responseString);
 
         setState(() {
           _isLoading = false;
         });
 
-        if (responseData['success'] == true) {
+        if (response.statusCode == 201) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Registration successful!'),
+              content: Text('Registration submitted! Await admin approval.'),
               backgroundColor: Colors.green,
             ),
           );
@@ -219,7 +235,11 @@ class _RegistrationPageState extends State<RegistrationPage> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(responseData['error'] ?? 'Registration failed'),
+              content: Text(
+                responseData['message'] ??
+                    responseData['error'] ??
+                    'Registration failed with status ${response.statusCode}',
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -228,8 +248,13 @@ class _RegistrationPageState extends State<RegistrationPage> {
         setState(() {
           _isLoading = false;
         });
+        print('Error details: $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+          ),
         );
       }
     }
@@ -359,24 +384,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
           ),
           SizedBox(height: 16.0),
 
-          // Phone
-          TextFormField(
-            controller: _phoneController,
-            decoration: InputDecoration(
-              labelText: 'Phone Number',
-              prefixIcon: Icon(Icons.phone_outlined),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            keyboardType: TextInputType.phone,
-            validator: (value) {
-              if (value == null || value.isEmpty) return 'Enter phone number';
-              if (value.length < 10) return 'Invalid phone number';
-              return null;
-            },
-          ),
-          SizedBox(height: 16.0),
+          // ❌ REMOVED: Phone Number Field
 
           // Address
           TextFormField(
@@ -414,6 +422,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
             },
           ),
           SizedBox(height: 16.0),
+
           // Valid ID Upload
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -435,7 +444,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                       icon: Icon(Icons.upload_file, color: Colors.white),
                       label: Text('Upload ID'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue.shade400, // lighter blue
+                        backgroundColor: Colors.blue.shade400,
                         foregroundColor: Colors.white,
                         padding: EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -454,8 +463,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                         icon: Icon(Icons.visibility, color: Colors.white),
                         label: Text('Preview'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              Colors.orange.shade300, // softer orange
+                          backgroundColor: Colors.orange.shade300,
                           foregroundColor: Colors.white,
                           padding: EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
@@ -605,7 +613,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
     _firstNameController.dispose();
     _lastNameController.dispose();
     _emailController.dispose();
-    _phoneController.dispose();
+    // ❌ REMOVED: _phoneController.dispose();
     _addressController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
