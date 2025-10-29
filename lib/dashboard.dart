@@ -1259,255 +1259,299 @@ class _ProfileTabState extends State<ProfileTab> {
     );
   }
 
-  // Enhanced modal for password change
   void _showChangePasswordModal() {
+    bool isCurrentPasswordObscured = true;
+    bool isNewPasswordObscured = true;
+    bool isConfirmPasswordObscured = true;
+
+    // Create a focus node for auto-scrolling
+    final currentPasswordFocus = FocusNode();
+    final newPasswordFocus = FocusNode();
+    final confirmPasswordFocus = FocusNode();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.80,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
-          ),
-        ),
-        child: Column(
-          children: [
-            // Header with gradient
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Colors.blue[700]!, Colors.blue[600]!],
-                ),
-                borderRadius: const BorderRadius.only(
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.80,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(24),
                   topRight: Radius.circular(24),
                 ),
               ),
-              child: Row(
+              child: Column(
                 children: [
+                  // Header with gradient - Fixed height
                   Container(
-                    width: 48,
-                    height: 48,
+                    padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Colors.blue[700]!, Colors.blue[600]!],
+                      ),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(24),
+                        topRight: Radius.circular(24),
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.lock,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        const Text(
-                          'Change Password',
-                          style: TextStyle(
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.lock,
                             color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
+                            size: 24,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Update your account password',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.9),
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.close,
-                        size: 18,
-                        color: Colors.white,
-                      ),
-                    ),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Password Form
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[50],
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey[200]!),
-                      ),
-                      child: Column(
-                        children: [
-                          _buildPasswordField(
-                            'Current Password',
-                            _currentPasswordController,
-                            _isCurrentPasswordObscured,
-                            () => setState(() {
-                              _isCurrentPasswordObscured =
-                                  !_isCurrentPasswordObscured;
-                            }),
-                          ),
-                          const SizedBox(height: 16),
-                          _buildPasswordField(
-                            'New Password',
-                            _newPasswordController,
-                            _isNewPasswordObscured,
-                            () => setState(() {
-                              _isNewPasswordObscured = !_isNewPasswordObscured;
-                            }),
-                          ),
-                          const SizedBox(height: 16),
-                          _buildPasswordField(
-                            'Confirm New Password',
-                            _confirmPasswordController,
-                            _isConfirmPasswordObscured,
-                            () => setState(() {
-                              _isConfirmPasswordObscured =
-                                  !_isConfirmPasswordObscured;
-                            }),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Password Requirements
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.blue[50],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.blue[100]!),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(
-                                Icons.info,
-                                size: 16,
-                                color: Colors.blue[700],
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Password Requirements',
+                              const Text(
+                                'Change Password',
                                 style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Update your account password',
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.9),
                                   fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.blue[700],
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '• At least 6 characters long\n• Include letters and numbers\n• Avoid common passwords',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.blue[700]!.withOpacity(0.8),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const Spacer(),
-
-                    // Action Buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.blue[700],
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              side: BorderSide(color: Colors.blue[700]!),
-                            ),
-                            child: const Text('Cancel'),
-                          ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: _updatePassword,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue[700],
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                        IconButton(
+                          icon: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.lock_reset, size: 18),
-                                SizedBox(width: 8),
-                                Text('Update Password'),
-                              ],
+                            child: const Icon(
+                              Icons.close,
+                              size: 18,
+                              color: Colors.white,
                             ),
                           ),
+                          onPressed: () => Navigator.pop(context),
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+
+                  // Scrollable content area
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        bottom: MediaQuery.of(context).viewInsets.bottom,
+                      ),
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Password Form
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.grey[200]!),
+                              ),
+                              child: Column(
+                                children: [
+                                  _buildPasswordField(
+                                    'Current Password',
+                                    _currentPasswordController,
+                                    isCurrentPasswordObscured,
+                                    () => setModalState(() {
+                                      isCurrentPasswordObscured =
+                                          !isCurrentPasswordObscured;
+                                    }),
+                                    focusNode: currentPasswordFocus,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildPasswordField(
+                                    'New Password',
+                                    _newPasswordController,
+                                    isNewPasswordObscured,
+                                    () => setModalState(() {
+                                      isNewPasswordObscured =
+                                          !isNewPasswordObscured;
+                                    }),
+                                    focusNode: newPasswordFocus,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildPasswordField(
+                                    'Confirm New Password',
+                                    _confirmPasswordController,
+                                    isConfirmPasswordObscured,
+                                    () => setModalState(() {
+                                      isConfirmPasswordObscured =
+                                          !isConfirmPasswordObscured;
+                                    }),
+                                    focusNode: confirmPasswordFocus,
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // Password Requirements
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.blue[50],
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.blue[100]!),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.info,
+                                        size: 16,
+                                        color: Colors.blue[700],
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Password Requirements',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.blue[700],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '• At least 6 characters long\n• Include letters and numbers\n• Avoid common passwords',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.blue[700]!.withOpacity(0.8),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(
+                              height: 32,
+                            ), // Extra space before buttons
+                            // Action Buttons
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () {
+                                      // Clean up focus nodes
+                                      currentPasswordFocus.dispose();
+                                      newPasswordFocus.dispose();
+                                      confirmPasswordFocus.dispose();
+                                      Navigator.pop(context);
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.blue[700],
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 16,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      side: BorderSide(
+                                        color: Colors.blue[700]!,
+                                      ),
+                                    ),
+                                    child: const Text('Cancel'),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: _updatePassword,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue[700],
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 16,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: const Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.lock_reset, size: 18),
+                                        SizedBox(width: 8),
+                                        Text('Update Password'),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 16), // Extra bottom padding
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
-      ),
+            );
+          },
+        );
+      },
     );
   }
 
+  // Updated _buildPasswordField with focus node support
   Widget _buildPasswordField(
     String label,
     TextEditingController controller,
-    bool obscureText,
-    VoidCallback toggleVisibility,
-  ) {
+    bool isObscured,
+    VoidCallback onToggleVisibility, {
+    FocusNode? focusNode,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
+          style: TextStyle(
             fontSize: 14,
-            color: Colors.black87,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey[700],
           ),
         ),
         const SizedBox(height: 8),
@@ -1516,21 +1560,59 @@ class _ProfileTabState extends State<ProfileTab> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.grey[300]!),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          child: TextFormField(
+          child: TextField(
             controller: controller,
-            obscureText: obscureText,
+            focusNode: focusNode,
+            obscureText: isObscured,
+            style: const TextStyle(fontSize: 16, color: Colors.black87),
             decoration: InputDecoration(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.all(16),
+              hintText: 'Enter $label',
+              hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
               suffixIcon: IconButton(
                 icon: Icon(
-                  obscureText ? Icons.visibility_off : Icons.visibility,
+                  isObscured ? Icons.visibility : Icons.visibility_off,
                   color: Colors.grey[600],
+                  size: 20,
                 ),
-                onPressed: toggleVisibility,
+                onPressed: onToggleVisibility,
+                splashRadius: 20,
               ),
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Helper method for validation indicators
+  Widget _buildValidationRow(String text, bool isValid) {
+    return Row(
+      children: [
+        Icon(
+          isValid ? Icons.check_circle : Icons.circle,
+          size: 16,
+          color: isValid ? Colors.green : Colors.grey,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 12,
+            color: isValid ? Colors.green[700] : Colors.grey[600],
+            fontWeight: isValid ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
       ],
